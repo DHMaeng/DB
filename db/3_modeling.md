@@ -170,18 +170,20 @@ Optionality
 
 > 정규화는 평범한 표를 관계형 데이터 베이스에 어울리는 비범한 표로 만드는 공정을 말한다
 
-정규화 폼 :http://bit.ly/2wV2SFj.com
+정규화 폼 : https://docs.google.com/spreadsheets/d/1iCQBYcBCM3a36nnOF-6lUByYGYXWjiXFbqrDdEww_F0/edit#gid=251854387
 
 3단계로 나눈다.
 
 **제1 정규형** : Atomic columns(각각의 열이 하나의 값만 가져라)
 
-| topic  |        |               |         |           |             |                |       |                 |
-| ------ | ------ | ------------- | ------- | --------- | ----------- | -------------- | ----- | --------------- |
-| title  | type   | description   | created | author_id | author_name | author_profile | price | tag             |
-| MySQL  | paper  | MySQL is ...  | 2011    | 1         | kim         | developer      | 10000 | rdb, free       |
-| MySQL  | online | MySQL is ...  | 2011    | 1         | kim         | developer      | 0     | rdb, free       |
-| ORACLE | online | ORACLE is ... | 2012    | 1         | kim         | developer      | 0     | rdb, commercial |
+> tag에 보면 중복된 값이 존재한다. 이것을 제거하자
+
+| topic  |        |               |         |           |             |                |       |                     |
+| ------ | ------ | ------------- | ------- | --------- | ----------- | -------------- | ----- | ------------------- |
+| title  | type   | description   | created | author_id | author_name | author_profile | price | tag                 |
+| MySQL  | paper  | MySQL is ...  | 2011    | 1         | kim         | developer      | 10000 | **rdb, free**       |
+| MySQL  | online | MySQL is ...  | 2011    | 1         | kim         | developer      | 0     | **rdb, free**       |
+| ORACLE | online | ORACLE is ... | 2012    | 1         | kim         | developer      | 0     | **rdb, commercial** |
 
 topic과 tag의 관계는 MYSQL에서 보면 rdb, free이고 rdb에서 보면 MYSQL, ORACLE 이므로 N대 M 관계이다. 따라서 새로운 테이블(매핑, 연결테이블)을 가져야 한다.
 
@@ -209,5 +211,65 @@ topic과 tag의 관계는 MYSQL에서 보면 rdb, free이고 rdb에서 보면 MY
 
 
 
-**제 2정규형** : Atomic columns(각각의 열이 하나의 값만 가져라)
+**제 2정규형** : 부분 종속성이 없어야 한다. 즉, 테이블에 중복키를 없애자
 
+> 굵게 표시한 부분이 부분 종속성을 의미한다. 오직 title에만 의존하고 type에는 의존하지 않으며 같은 값을 가진다.
+
+| topic  |        |                  |          |           |             |                |       |
+| ------ | ------ | ---------------- | -------- | --------- | ----------- | -------------- | ----- |
+| title  | type   | description      | created  | author_id | author_name | author_profile | price |
+| MySQL  | paper  | **MySQL is ...** | **2011** | **1**     | **kim**     | **developer**  | 10000 |
+| MySQL  | online | **MySQL is ...** | **2011** | **1**     | **kim**     | **developer**  | 0     |
+| ORACLE | online | ORACLE is ...    | 2012     | 1         | kim         | developer      | 0     |
+
+title에만 종속되게 만들면 중복된 값을 제거 할 수 있다.
+
+| topic  |               |         |           |             |                |
+| ------ | ------------- | ------- | --------- | ----------- | -------------- |
+| title  | description   | created | author_id | author_name | author_profile |
+| MySQL  | MySQL is ...  | 2011    | 1         | kim         | developer      |
+| ORACLE | ORACLE is ... | 2012    | 1         | kim         | developer      |
+
+그리고 값은 title과 type에 따라 결정되므로 이렇게 한다.
+
+| topic_type |        |       |
+| ---------- | ------ | ----- |
+| title      | type   | price |
+| MySQL      | paper  | 10000 |
+| MySQL      | online | 0     |
+| ORACLE     | online | 0     |
+
+
+
+**제 3정규형(No transitive dependencies)** : 이행적 종속성을 제거하자
+
+> 굵게 표시한 부분이 이행적 종속성을 의미한다. author_id에 종속한다.
+
+| topic  |               |         |           |             |                |
+| ------ | ------------- | ------- | --------- | ----------- | -------------- |
+| title  | description   | created | author_id | author_name | author_profile |
+| MySQL  | MySQL is ...  | 2011    | **1**     | **kim**     | **developer**  |
+| ORACLE | ORACLE is ... | 2012    | **1**     | **kim**     | **developer**  |
+
+그래서 다음과 같이 나누면 author는 한개로 만들어진다.
+
+| author |             |                |
+| ------ | ----------- | -------------- |
+| id     | author_name | author_profile |
+| 1      | kim         | developer      |
+
+| topic  |               |         |           |
+| ------ | ------------- | ------- | --------- |
+| title  | description   | created | author_id |
+| MySQL  | MySQL is ...  | 2011    | 1         |
+| ORACLE | ORACLE is ... | 2012    | 1         |
+
+
+
+---
+
+
+
+## 5. 물리적 데이터 모델링
+
+> 논리적 데이터 모델링이 관계형 데이터베이스 패러다임에 잘 맞는 이상적인 표를 만드는 것이었다면, 물리적 데이터 모델링은 선택한 데이터베이스 제품에 만는 현실적인 고려는 하는 방법론입니다. 이 단계에서 가장 중요한 것은 성능입니다. 특히 역정규화(반정규화, denormalization)의 사례를 집중적으로 다룹니다. 
